@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Earth's Last Century — Climate Journey</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600;700;900&family=IBM+Plex+Mono:wght@300;400;700&display=swap" rel="stylesheet"/>
+<style>
+/* ════════════════════════════════════════
+   ROOT & RESET
+════════════════════════════════════════ */
+:root {
+  --c-1900: #4a9e3f;
+  --c-1950: #c8952a;
+  --c-2000: #d4541a;
+  --c-2024: #cc2200;
+  --c-2100: #7a0000;
+  --ease: cubic-bezier(.25,.46,.45,.94);
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: 'IBM Plex Mono', monospace;
+  background: #020408;
+  color: #e8e0d0;
+  overflow-x: hidden;
+  cursor: none;
+}
+
+/* ════════════════════════════════════════
+   CUSTOM CURSOR
+════════════════════════════════════════ */
+#cursor {
+  position: fixed; width:12px; height:12px;
+  border-radius:50%; background:#4a9e3f;
+  pointer-events:none; z-index:9999;
+  transform:translate(-50%,-50%);
+  transition: background 0.5s, transform 0.15s;
+  mix-blend-mode: screen;
+}
+#cursor-ring {
+  position: fixed; width:36px; height:36px;
+  border-radius:50%; border:1px solid rgba(74,158,63,0.5);
+  pointer-events:none; z-index:9998;
+  transform:translate(-50%,-50%);
+  transition: all 0.12s ease, border-color 0.5s, width 0.3s, height 0.3s;
+}
+
+/* ════════════════════════════════════════
+   PROGRESS BAR
+════════════════════════════════════════ */
+#progress-bar {
+  position: fixed; top:0; left:0; height:3px;
+  background: var(--era-color, #4a9e3f);
+  width: 0%; z-index:1000;
+  transition: width 0.05s linear, background 1s;
+  box-shadow: 0 0 12px var(--era-color, #4a9e3f);
+}
+
+/* ════════════════════════════════════════
+   HUD — YEAR + TEMP
+════════════════════════════════════════ */
+#hud {
+  position: fixed; top:24px; right:24px;
+  z-index:900; text-align:right;
+  pointer-events:none;
+}
+#hud-year {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(3rem,6vw,5rem);
+  font-weight:900; line-height:1;
+  color: var(--era-color, #4a9e3f);
+  text-shadow: 0 0 40px var(--era-color,#4a9e3f);
+  transition: color 1s, text-shadow 1s;
+  letter-spacing:-3px;
+}
+#hud-temp {
+  font-size:0.75rem; color:#aaa; margin-top:4px;
+  transition: color 1s;
+}
+#hud-temp span { color: var(--era-color,#4a9e3f); font-weight:700; }
+
+/* ════════════════════════════════════════
+   SOUND BUTTON
+════════════════════════════════════════ */
+#sound-btn {
+  position: fixed; bottom:24px; right:24px;
+  z-index:900; width:48px; height:48px;
+  border-radius:50%; border:1px solid rgba(255,255,255,0.15);
+  background:rgba(0,0,0,0.6); backdrop-filter:blur(10px);
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  font-size:1.2rem; transition:all 0.3s; color:#fff;
+}
+#sound-btn:hover { border-color:rgba(255,255,255,0.4); transform:scale(1.1); }
+
+/* ════════════════════════════════════════
+   TIMELINE SIDEBAR
+════════════════════════════════════════ */
+#timeline {
+  position: fixed; left:24px; top:50%;
+  transform: translateY(-50%);
+  z-index:900; display:flex; flex-direction:column;
+  align-items:center; gap:0;
+}
+.tl-item {
+  display:flex; flex-direction:column; align-items:center;
+  cursor:pointer;
+}
+.tl-dot {
+  width:10px; height:10px; border-radius:50%;
+  border:2px solid rgba(255,255,255,0.2);
+  background:transparent;
+  transition:all 0.4s; position:relative;
+}
+.tl-dot.active {
+  border-color: var(--era-color,#4a9e3f);
+  background: var(--era-color,#4a9e3f);
+  box-shadow: 0 0 12px var(--era-color,#4a9e3f);
+  transform: scale(1.4);
+}
+.tl-label {
+  font-size:0.6rem; color:rgba(255,255,255,0.3);
+  margin-top:3px; letter-spacing:1px;
+  transition: color 0.4s;
+  writing-mode: vertical-rl;
+  display:none;
+}
+.tl-dot.active + .tl-label { color:rgba(255,255,255,0.8); }
+.tl-line {
+  width:1px; height:40px;
+  background:rgba(255,255,255,0.08);
+  transition: background 0.5s;
+}
+.tl-line.lit { background: var(--era-color,#4a9e3f); opacity:0.5; }
+
+/* ════════════════════════════════════════
+   CANVAS LAYERS
+════════════════════════════════════════ */
+#bg-canvas, #particle-canvas {
+  position:fixed; inset:0;
+  pointer-events:none; z-index:0;
+}
+#bg-canvas { z-index:0; }
+#particle-canvas { z-index:1; opacity:0.5; }
+
+/* ════════════════════════════════════════
+   SECTIONS
+════════════════════════════════════════ */
+.era {
+  min-height:100vh;
+  display:flex; flex-direction:column;
+  justify-content:center; align-items:center;
+  position:relative; overflow:hidden;
+  padding:80px 80px 80px 80px;
+  z-index:2;
+}
+@media(max-width:700px){ .era { padding:80px 20px; } }
+
+.era-inner {
+  max-width:760px; width:100%;
+  text-align:center;
+  position:relative; z-index:3;
+}
+
+/* Watermark year */
+.era-bg-year {
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(6rem,22vw,18rem);
+  font-weight:900; opacity:0.04;
+  pointer-events:none; letter-spacing:-10px;
+  white-space:nowrap; color:#fff;
+  animation: bgYearPulse 5s ease-in-out infinite;
+}
+@keyframes bgYearPulse {
+  0%,100%{ opacity:0.04; }
+  50%    { opacity:0.07; }
+}
+
+/* ════════════════════════════════════════
+   FLOATING EARTH
+════════════════════════════════════════ */
+.earth-rig {
+  position:relative;
+  width:160px; height:160px;
+  margin:0 auto 2rem;
+}
+.earth-core {
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:7rem; line-height:1;
+  animation: floatY 5s ease-in-out infinite, earthSpin 25s linear infinite;
+  filter: drop-shadow(0 0 30px var(--era-color,#4a9e3f));
+  transition: filter 1s;
+}
+@keyframes floatY {
+  0%,100%{ transform: translateY(0) rotate(0deg) scale(1); }
+  33%    { transform: translateY(-16px) rotate(3deg) scale(1.02); }
+  66%    { transform: translateY(-8px) rotate(-2deg) scale(0.98); }
+}
+@keyframes earthSpin {
+  from{ filter: drop-shadow(0 0 30px var(--era-color,#4a9e3f)) hue-rotate(0deg); }
+  to  { filter: drop-shadow(0 0 30px var(--era-color,#4a9e3f)) hue-rotate(360deg); }
+}
+
+/* Orbit rings */
+.orbit {
+  position:absolute; top:50%; left:50%;
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:50%; transform-origin:0 0;
+}
+.orbit-1 {
+  width:180px; height:50px;
+  margin:-25px 0 0 -90px;
+  animation: orbitRotate 6s linear infinite;
+  border-color: rgba(74,158,63,0.2);
+}
+.orbit-2 {
+  width:220px; height:70px;
+  margin:-35px 0 0 -110px;
+  animation: orbitRotate 10s linear infinite reverse;
+  border-color: rgba(255,255,255,0.05);
+}
+@keyframes orbitRotate {
+  from{ transform: rotateX(70deg) rotate(0deg); }
+  to  { transform: rotateX(70deg) rotate(360deg); }
+}
+.orbit-moon {
+  position:absolute; top:-6px; left:50%;
+  width:12px; height:12px; border-radius:50%;
+  background:var(--era-color,#4a9e3f);
+  box-shadow:0 0 12px var(--era-color,#4a9e3f);
+  animation:moonOrbit 6s linear infinite;
+  transition: background 1s, box-shadow 1s;
+}
+@keyframes moonOrbit {
+  from{ transform: rotate(0deg) translateX(90px); }
+  to  { transform: rotate(360deg) translateX(90px); }
+}
+
+/* Aura pulse */
+.earth-aura {
+  position:absolute; inset:-20px;
+  border-radius:50%;
+  background: radial-gradient(circle, var(--era-color,rgba(74,158,63,0.15)) 0%, transparent 65%);
+  animation: auraPulse 3s ease-in-out infinite;
+  transition: background 1s;
+}
+@keyframes auraPulse {
+  0%,100%{ transform:scale(1); opacity:0.6; }
+  50%    { transform:scale(1.25); opacity:1; }
+}
+
+/* ════════════════════════════════════════
+   TYPOGRAPHY
+════════════════════════════════════════ */
+.era-tag {
+  font-size:0.65rem; letter-spacing:4px;
+  text-transform:uppercase; color:var(--era-color,#4a9e3f);
+  margin-bottom:0.8rem; opacity:0.8;
+}
+.era-title {
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(2.2rem,5.5vw,4.2rem);
+  font-weight:700; line-height:1.05;
+  margin-bottom:1.2rem;
+  transition: color 1s;
+}
+.era-desc {
+  font-size:clamp(0.8rem,1.8vw,0.95rem);
+  line-height:1.9; opacity:0.75;
+  max-width:580px; margin:0 auto 2rem;
+}
+
+/* ════════════════════════════════════════
+   STAT CARDS
+════════════════════════════════════════ */
+.stat-grid {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:0.8rem; margin:1.5rem auto;
+  max-width:640px;
+}
+@media(max-width:500px){ .stat-grid{ grid-template-columns:repeat(3,1fr); gap:0.4rem; } }
+.stat-card {
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.07);
+  border-radius:8px; padding:1rem 0.6rem;
+  backdrop-filter:blur(8px);
+  transition: transform 0.3s, box-shadow 0.3s, border-color 0.5s;
+  cursor:default;
+}
+.stat-card:hover {
+  transform:translateY(-5px);
+  box-shadow:0 8px 24px rgba(0,0,0,0.5);
+  border-color: rgba(255,255,255,0.15);
+}
+.stat-num {
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(1.6rem,4vw,2.4rem);
+  font-weight:900; display:block;
+  color:var(--era-color,#4a9e3f);
+  transition: color 1s;
+}
+.stat-lbl {
+  font-size:0.6rem; opacity:0.5;
+  text-transform:uppercase; letter-spacing:1.5px;
+  margin-top:3px; display:block;
+}
+
+/* ════════════════════════════════════════
+   VISUAL COMPONENTS
+════════════════════════════════════════ */
+
+/* Forest */
+.forest-strip {
+  display:flex; align-items:flex-end; justify-content:center;
+  gap:3px; height:70px; margin:1.2rem auto;
+  max-width:500px;
+}
+.tree-bar {
+  width:7px; border-radius:2px 2px 0 0;
+  transition:height 1.2s var(--ease), background 1.2s, opacity 1.2s;
+  animation: treeSway 3s ease-in-out infinite;
+}
+@keyframes treeSway {
+  0%,100%{ transform:scaleX(1); }
+  50%    { transform:scaleX(1.1); }
+}
+
+/* Temperature bar */
+.temp-track {
+  width:100%; max-width:500px; margin:1rem auto;
+  background:rgba(255,255,255,0.05);
+  border-radius:40px; height:14px;
+  overflow:hidden; border:1px solid rgba(255,255,255,0.08);
+}
+.temp-fill {
+  height:100%; border-radius:40px;
+  background:linear-gradient(90deg,#0af,#0f8,#fa0,#f40,#f00);
+  box-shadow:0 0 16px rgba(255,80,0,0.5);
+  transition:width 1.8s var(--ease);
+  animation:tempGlow 2s ease-in-out infinite;
+}
+@keyframes tempGlow {
+  0%,100%{ box-shadow:0 0 10px rgba(255,80,0,0.4); }
+  50%    { box-shadow:0 0 28px rgba(255,80,0,0.9); }
+}
+
+/* Sea level */
+.sea-box {
+  width:100%; max-width:480px; height:110px;
+  margin:1rem auto; position:relative;
+  border-radius:10px; overflow:hidden;
+  border:1px solid rgba(0,100,200,0.25);
+  background:#050e1c;
+}
+.sea-fill {
+  position:absolute; bottom:0; left:0; right:0;
+  background:linear-gradient(180deg,rgba(0,100,220,0.45),rgba(0,30,100,0.9));
+  transition:height 2s var(--ease);
+  border-radius:4px 4px 0 0;
+}
+.sea-fill::before {
+  content:'';
+  position:absolute; top:-6px; left:-60%;
+  width:220%; height:12px;
+  background:rgba(0,140,255,0.3);
+  border-radius:50%;
+  animation:waveAnim 2.5s linear infinite;
+}
+@keyframes waveAnim {
+  from{ transform:translateX(0) scaleY(1); }
+  50% { transform:translateX(25%) scaleY(1.3); }
+  to  { transform:translateX(0) scaleY(1); }
+}
+.sea-city-icon {
+  position:absolute; left:50%;
+  transform:translateX(-50%);
+  font-size:1.8rem; z-index:2;
+  transition:bottom 2s var(--ease);
+  filter:drop-shadow(0 0 8px rgba(255,200,0,0.6));
+}
+.sea-tag {
+  position:absolute; top:7px; right:10px;
+  font-size:0.6rem; opacity:0.4; letter-spacing:1px;
+  text-transform:uppercase;
+}
+
+/* CO2 bubbles */
+.co2-cloud {
+  display:flex; flex-wrap:wrap; gap:5px;
+  justify-content:center; max-width:460px;
+  margin:1rem auto;
+}
+.co2-bubble {
+  border-radius:50%; opacity:0;
+  animation:bubbleIn 0.3s forwards;
+  transition:width 0.5s, height 0.5s;
+}
+@keyframes bubbleIn {
+  from{ opacity:0; transform:scale(0.3); }
+  to  { opacity:0.65; transform:scale(1); }
+}
+
+/* Fire row */
+.fire-row {
+  display:flex; flex-wrap:wrap; gap:5px;
+  justify-content:center; margin:1rem auto;
+  max-width:380px;
+}
+.fire-ico {
+  font-size:1.4rem;
+  animation:fireFlick 0.35s infinite alternate;
+}
+@keyframes fireFlick {
+  from{ opacity:0.5; transform:scale(1) translateY(0); }
+  to  { opacity:1;   transform:scale(1.18) translateY(-4px); }
+}
+
+/* ════════════════════════════════════════
+   HERO
+════════════════════════════════════════ */
+#hero {
+  min-height:100vh;
+  display:flex; flex-direction:column;
+  justify-content:center; align-items:center;
+  text-align:center; padding:60px 24px;
+  position:relative; z-index:2;
+}
+#hero h1 {
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(3rem,10vw,7.5rem);
+  font-weight:900; line-height:0.95;
+  margin-bottom:1.2rem;
+  background:linear-gradient(135deg,#a8e063 0%,#56c02b 40%,#1a8f3f 100%);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text;
+  animation:heroReveal 1.4s var(--ease) both;
+}
+@keyframes heroReveal {
+  from{ opacity:0; transform:translateY(50px) skewY(3deg); }
+  to  { opacity:1; transform:translateY(0) skewY(0deg); }
+}
+#hero .sub {
+  font-size:clamp(0.8rem,1.8vw,1rem); opacity:0.5;
+  max-width:460px; line-height:1.8; margin-bottom:2.5rem;
+  animation:heroReveal 1.4s 0.25s var(--ease) both;
+}
+.cta-btn {
+  display:inline-block; padding:13px 34px;
+  border:1px solid rgba(74,158,63,0.6);
+  color:#4a9e3f; font-family:'IBM Plex Mono',monospace;
+  font-size:0.8rem; text-transform:uppercase; letter-spacing:3px;
+  text-decoration:none; border-radius:3px;
+  transition:all 0.35s; position:relative; overflow:hidden;
+  animation:heroReveal 1.4s 0.45s var(--ease) both;
+}
+.cta-btn::after {
+  content:''; position:absolute; inset:0;
+  background:#4a9e3f; transform:translateX(-101%);
+  transition:transform 0.35s var(--ease); z-index:-1;
+}
+.cta-btn:hover { color:#000; }
+.cta-btn:hover::after { transform:translateX(0); }
+
+/* scroll hint */
+.s-hint {
+  position:absolute; bottom:30px; left:50%;
+  transform:translateX(-50%);
+  font-size:0.65rem; opacity:0.3; letter-spacing:3px;
+  text-transform:uppercase;
+  animation:hintBounce 2.2s ease-in-out infinite;
+}
+@keyframes hintBounce {
+  0%,100%{ transform:translateX(-50%) translateY(0); }
+  50%    { transform:translateX(-50%) translateY(9px); }
+}
+
+/* ════════════════════════════════════════
+   FADE-UP REVEALS
+════════════════════════════════════════ */
+.reveal {
+  opacity:0; transform:translateY(36px);
+  transition:opacity 0.9s var(--ease), transform 0.9s var(--ease);
+}
+.reveal.in { opacity:1; transform:translateY(0); }
+.reveal-d1{ transition-delay:0.1s; }
+.reveal-d2{ transition-delay:0.2s; }
+.reveal-d3{ transition-delay:0.35s; }
+.reveal-d4{ transition-delay:0.5s; }
+
+/* ════════════════════════════════════════
+   ACTION SECTION
+════════════════════════════════════════ */
+#action {
+  min-height:100vh;
+  display:flex; flex-direction:column;
+  justify-content:center; align-items:center;
+  padding:80px 24px; text-align:center;
+  background:radial-gradient(ellipse at 50% 60%,#001a0a 0%,#000 100%);
+  position:relative; z-index:2;
+}
+#action h2 {
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(2.2rem,6vw,4rem);
+  color:#00e87a;
+  text-shadow:0 0 30px rgba(0,232,122,0.4);
+  margin-bottom:0.4rem;
+}
+#action .sub2 { opacity:0.5; font-size:0.8rem; margin-bottom:2rem; }
+
+.act-list { list-style:none; max-width:580px; width:100%; text-align:left; }
+.act-item {
+  display:flex; align-items:center; gap:1rem;
+  padding:0.9rem 1.1rem;
+  border:1px solid rgba(0,232,122,0.1);
+  border-radius:8px; margin-bottom:0.6rem;
+  cursor:pointer; transition:all 0.3s;
+  background:rgba(0,232,122,0.02);
+}
+.act-item:hover { background:rgba(0,232,122,0.07); border-color:rgba(0,232,122,0.3); transform:translateX(5px); }
+.act-item.done { background:rgba(0,232,122,0.1); border-color:#00e87a; }
+.act-chk {
+  width:22px; height:22px; border-radius:50%;
+  border:2px solid rgba(0,232,122,0.35);
+  display:flex; align-items:center; justify-content:center;
+  font-size:0.75rem; flex-shrink:0; transition:all 0.3s;
+}
+.act-item.done .act-chk { background:#00e87a; border-color:#00e87a; color:#000; box-shadow:0 0 10px #00e87a; }
+.act-txt { font-size:0.85rem; line-height:1.4; }
+.act-co2 { font-size:0.65rem; color:#00e87a; opacity:0.55; margin-top:2px; }
+
+#score {
+  margin-top:1.5rem;
+  font-family:'Cormorant Garamond',serif;
+  font-size:1.6rem; color:#00e87a;
+  text-shadow:0 0 20px rgba(0,232,122,0.4);
+}
+.share-btn {
+  margin-top:1.5rem; padding:13px 34px;
+  background:#00e87a; color:#000;
+  font-family:'IBM Plex Mono',monospace;
+  font-size:0.8rem; text-transform:uppercase; letter-spacing:2px;
+  border-radius:3px; border:none; cursor:pointer; font-weight:700;
+  transition:all 0.3s;
+  box-shadow:0 0 20px rgba(0,232,122,0.35);
+}
+.share-btn:hover { transform:scale(1.05); box-shadow:0 0 40px rgba(0,232,122,0.6); }
+
+/* ════════════════════════════════════════
+   ERA BACKGROUNDS
+════════════════════════════════════════ */
+#era-1900{ background:radial-gradient(ellipse at 40% 20%,#0d2b0a 0%,#020a02 100%); }
+#era-1950{ background:radial-gradient(ellipse at 60% 20%,#1e1505 0%,#080502 100%); }
+#era-2000{ background:radial-gradient(ellipse at 40% 20%,#1e0a02 0%,#080202 100%); }
+#era-2024{ background:radial-gradient(ellipse at 50% 20%,#260a00 0%,#0a0200 100%); }
+#era-2100{ background:radial-gradient(ellipse at 50% 30%,#1a0000 0%,#060000 100%); }
+
+/* ════════════════════════════════════════
+   SOUND VISUALIZER
+════════════════════════════════════════ */
+#viz {
+  position:fixed; bottom:80px; right:24px;
+  display:flex; align-items:flex-end; gap:2px;
+  height:20px; z-index:900; opacity:0;
+  transition:opacity 0.5s;
+}
+#viz.active { opacity:1; }
+.viz-bar {
+  width:3px; background:var(--era-color,#4a9e3f);
+  border-radius:2px;
+  animation:vizAnim var(--spd) ease-in-out infinite alternate;
+}
+@keyframes vizAnim {
+  from{ height:3px; }
+  to  { height:var(--h); }
+}
+
+/* ════════════════════════════════════════
+   BLOCKQUOTE
+════════════════════════════════════════ */
+blockquote {
+  border-left:2px solid rgba(255,255,255,0.15);
+  padding-left:1rem; margin:1.5rem auto;
+  max-width:480px; font-style:italic;
+  opacity:0.45; font-size:0.82rem; text-align:left;
+  line-height:1.7;
+}
+
+/* ════════════════════════════════════════
+   MOBILE
+════════════════════════════════════════ */
+@media(max-width:600px){
+  #hud-year{ font-size:2.2rem; }
+  #hud{ top:16px; right:16px; }
+  #timeline{ display:none; }
+  .earth-core{ font-size:5rem; }
+  .earth-rig{ width:110px; height:110px; }
+  .stat-grid{ gap:0.4rem; }
+  .stat-num{ font-size:1.3rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- CURSOR -->
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<!-- CANVASES -->
+<canvas id="bg-canvas"></canvas>
+<canvas id="particle-canvas"></canvas>
+
+<!-- PROGRESS -->
+<div id="progress-bar"></div>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="hud-year">1900</div>
+  <div id="hud-temp">🌡️ <span id="hud-temp-val">+0.0°C</span> above pre-industrial</div>
+</div>
+
+<!-- TIMELINE SIDEBAR -->
+<nav id="timeline">
+  <div class="tl-item" onclick="scrollTo('hero')">
+    <div class="tl-dot active" data-era="hero"></div>
+    <div class="tl-label">Intro</div>
+  </div>
+  <div class="tl-line" data-line="0"></div>
+  <div class="tl-item" onclick="scrollTo('era-1900')">
+    <div class="tl-dot" data-era="era-1900"></div>
+    <div class="tl-label">1900</div>
+  </div>
+  <div class="tl-line" data-line="1"></div>
+  <div class="tl-item" onclick="scrollTo('era-1950')">
+    <div class="tl-dot" data-era="era-1950"></div>
+    <div class="tl-label">1950</div>
+  </div>
+  <div class="tl-line" data-line="2"></div>
+  <div class="tl-item" onclick="scrollTo('era-2000')">
+    <div class="tl-dot" data-era="era-2000"></div>
+    <div class="tl-label">2000</div>
+  </div>
+  <div class="tl-line" data-line="3"></div>
+  <div class="tl-item" onclick="scrollTo('era-2024')">
+    <div class="tl-dot" data-era="era-2024"></div>
+    <div class="tl-label">2024</div>
+  </div>
+  <div class="tl-line" data-line="4"></div>
+  <div class="tl-item" onclick="scrollTo('era-2100')">
+    <div class="tl-dot" data-era="era-2100"></div>
+    <div class="tl-label">2100</div>
+  </div>
+  <div class="tl-line" data-line="5"></div>
+  <div class="tl-item" onclick="scrollTo('action')">
+    <div class="tl-dot" data-era="action"></div>
+    <div class="tl-label">Act</div>
+  </div>
+</nav>
+
+<!-- SOUND BUTTON -->
+<button id="sound-btn" onclick="toggleSound()" title="Toggle ambient sound">🔇</button>
+
+<!-- SOUND VISUALIZER -->
+<div id="viz">
+  <div class="viz-bar" style="--spd:0.4s;--h:8px"></div>
+  <div class="viz-bar" style="--spd:0.6s;--h:14px"></div>
+  <div class="viz-bar" style="--spd:0.5s;--h:18px"></div>
+  <div class="viz-bar" style="--spd:0.7s;--h:12px"></div>
+  <div class="viz-bar" style="--spd:0.45s;--h:20px"></div>
+  <div class="viz-bar" style="--spd:0.55s;--h:10px"></div>
+</div>
+
+<!-- ══════════════════════════════════════
+     HERO
+══════════════════════════════════════ -->
+<section id="hero">
+  <div class="earth-rig" style="width:190px;height:190px;margin-bottom:2rem">
+    <div class="earth-aura"></div>
+    <div class="earth-core">🌍</div>
+    <div class="orbit orbit-1"><div class="orbit-moon"></div></div>
+    <div class="orbit orbit-2"></div>
+  </div>
+  <h1>Earth's<br/>Last Century</h1>
+  <p class="sub">Scroll through 200 years of climate change — from lush green Earth to a burning world. And discover how YOU can rewrite the ending.</p>
+  <a href="#era-1900" class="cta-btn">Begin the Journey ↓</a>
+  <div class="s-hint">scroll to travel through time</div>
+</section>
+
+<!-- ══════════════════════════════════════
+     ERA 1900
+══════════════════════════════════════ -->
+<section class="era" id="era-1900" data-era-color="#4a9e3f" data-year="1900" data-temp="0.0" data-sound="forest">
+  <div class="era-bg-year">1900</div>
+  <div class="era-inner">
+    <div class="reveal reveal-d1">
+      <div class="earth-rig">
+        <div class="earth-aura"></div>
+        <div class="earth-core">🌍</div>
+        <div class="orbit orbit-1"><div class="orbit-moon"></div></div>
+        <div class="orbit orbit-2"></div>
+      </div>
+    </div>
+    <p class="era-tag reveal reveal-d1">Chapter 01 · 1900</p>
+    <h2 class="era-title reveal reveal-d2">The Green Earth</h2>
+    <p class="era-desc reveal reveal-d2">The industrial revolution is just beginning. Forests blanket 46% of Earth. CO₂ holds steady at 280 ppm — unchanged for ten thousand years. Rivers run clear. The air is clean. The oceans are cool and full of life.</p>
+
+    <div class="forest-strip reveal reveal-d3" id="f1900"></div>
+
+    <div class="stat-grid reveal reveal-d3">
+      <div class="stat-card"><span class="stat-num">280</span><span class="stat-lbl">CO₂ ppm</span></div>
+      <div class="stat-card"><span class="stat-num">46%</span><span class="stat-lbl">Forest Cover</span></div>
+      <div class="stat-card"><span class="stat-num">+0.0°</span><span class="stat-lbl">Temp Change</span></div>
+    </div>
+
+    <blockquote class="reveal reveal-d4">"The Earth does not belong to us. We belong to the Earth." — Chief Seattle</blockquote>
+  </div>
+  <div class="s-hint">scroll →</div>
+</section>
+
+<!-- ══════════════════════════════════════
+     ERA 1950
+══════════════════════════════════════ -->
+<section class="era" id="era-1950" data-era-color="#c8952a" data-year="1950" data-temp="0.3" data-sound="factory">
+  <div class="era-bg-year">1950</div>
+  <div class="era-inner">
+    <div class="reveal reveal-d1">
+      <div class="earth-rig">
+        <div class="earth-aura" style="background:radial-gradient(circle,rgba(200,149,42,0.18) 0%,transparent 65%)"></div>
+        <div class="earth-core" style="filter:drop-shadow(0 0 28px #c8952a)">🌎</div>
+        <div class="orbit orbit-1"><div class="orbit-moon" style="background:#c8952a;box-shadow:0 0 12px #c8952a"></div></div>
+        <div class="orbit orbit-2"></div>
+      </div>
+    </div>
+    <p class="era-tag reveal reveal-d1" style="color:#c8952a">Chapter 02 · 1950</p>
+    <h2 class="era-title reveal reveal-d2" style="color:#c8952a">Smoke Signals</h2>
+    <p class="era-desc reveal reveal-d2">Post-war industrial boom. Factories multiply overnight. Cars flood every street. CO₂ climbs to 310 ppm. The first scientists warn of a "greenhouse effect" — but nobody listens. Forests begin to thin at the edges.</p>
+
+    <div class="forest-strip reveal reveal-d3" id="f1950"></div>
+
+    <div class="temp-track reveal reveal-d3"><div class="temp-fill" style="width:18%"></div></div>
+    <p style="font-size:0.65rem;opacity:0.4;text-align:center;margin-top:4px" class="reveal reveal-d3">Temperature Anomaly Rising</p>
+
+    <div class="stat-grid reveal reveal-d3">
+      <div class="stat-card"><span class="stat-num" style="color:#c8952a">310</span><span class="stat-lbl">CO₂ ppm</span></div>
+      <div class="stat-card"><span class="stat-num" style="color:#c8952a">38%</span><span class="stat-lbl">Forest Cover</span></div>
+      <div class="stat-card"><span class="stat-num" style="color:#c8952a">+0.3°</span><span class="stat-lbl">Temp Change</span></div>
+    </div>
+  </div>
+  <div class="s-hint">scroll →</div>
+</section>
+
+<!-- ══════════════════════════════════════
+     ERA 2000
+══════════════════════════════════════ -->
+<section class="era" id="era-2000" data-era-color="#d4541a" data-year="2000" data-temp="0.8" data-sound="wind">
+  <div class="era-bg-year">2000</div>
+  <div class="era-inner">
+    <div class="reveal reveal-d1">
+      <div class="earth-rig">
+        <div class="earth-aura" style="background:radial-gradient(circle,rgba(212,84,26,0.2) 0%,transparent 65%)"></div>
+        <div class="earth-core" style="filter:drop-shadow(0 0 28px #d4541a)">🌏</div>
+        <div class="orbit orbit-1"><div class="orbit-moon" style="background:#d4541a;box-shadow:0 0 12px #d4541a"></div></div>
+        <div class="orbit orbit-2"></div>
+      </div>
+    </div>
+    <p class="era-tag reveal reveal-d1" style="color:#d4541a">Chapter 03 · 2000</p>
+    <h2 class="era-title reveal reveal-d2" style="color:#d4541a">The Tipping Point</h2>
+    <p class="era-desc reveal reveal-d2">CO₂ crosses 370 ppm. Hottest years on record break every decade. Arctic sea ice collapses. Glaciers vanish. The Amazon loses 20% of its canopy. Coral reefs bleach and die. Scientists declare a global emergency.</p>
+
+    <div class="forest-strip reveal reveal-d3" id="f2000"></div>
+
+    <div class="temp-track reveal reveal-d3"><div class="temp-fill" style="width:46%"></div></div>
+
+    <div class="sea-box reveal reveal-d3">
+      <div class="sea-fill" style="height:28%"></div>
+      <div class="sea-city-icon" style="bottom:28%">🏙️</div>
+      <div class="sea-tag">Sea Level Rise</div>
+    </div>
+
+    <div class="stat-grid reveal reveal-d3">
+      <div class="stat-card"><span class="stat-num" style="color:#d4541a">370</span><span class="stat-lbl">CO₂ ppm</span></div>
+      <div class="stat-card"><span class="stat-num" style="color:#d4541a">31%</span><span class="stat-lbl">Forest Cover</span></div>
+      <div class="stat-card"><span class="stat-num" style="color:#d4541a">+0.8°</span><span class="stat-lbl">Temp Change</span></div>
+    </div>
+  </div>
+  <div class="s-hint">scroll →</div>
+</section>
+
+<!-- ══════════════════════════════════════
+     ERA 2024
+══════════════════════════════════════ -->
+<section class="era" id="era-2024" data-era-color="#cc2200" data-year="2024" data-temp="1.2" data-sound="fire">
+  <div class="era-bg-year">2024</div>
+  <div class="era-inner">
+    <div class="reveal reveal-d1">
+      <div class="earth-rig">
+        <div class="earth-aura" style="background:radial-gradient(circle,rgba(204,34,0,0.28) 0%,transparent 65%)"></div>
+        <div class="earth-core" style="filter:drop-shadow(0 0 30px #cc2200);animation:floatY 5s ease-in-out infinite,dangerShake 0.9s ease-in-out infinite">🌍</div>
+        <div class="orbit orbit-1"><div class="orbit-moon" style="background:#cc2200;box-shadow:0 0 15px #cc2200;width:14px;height:14px;top:-7px"></div></div>
+        <div class="orbit orbit-2" style="border-color:rgba(204,34,0,0.15)"></div>
+      </div>
+    </div>
+    <p class="era-tag reveal reveal-d1" style="color:#cc2200">Chapter 04 · 2024</p>
+    <h2 class="era-title reveal reveal-d2" style="color:#ff4422">⚠️ We Are Here</h2>
+    <p class="era-desc reveal reveal-d2">CO₂ at 424 ppm — highest in 3 million years. 2023 is the hottest year ever recorded. Wildfires rage across every continent. 1 million species face extinction. And yet — there is still time to act.</p>
+
+    <div class="fire-row reveal reveal-d3" id="fires"></div>
+
+    <div class="temp-track reveal reveal-d3"><div class="temp-fill" style="width:72%"></div></div>
+
+    <div class="sea-box reveal reveal-d3">
+      <div class="sea-fill" style="height:54%"></div>
+      <div class="sea-city-icon" style="bottom:54%">🏙️</div>
+      <div class="sea-tag">Sea Level Rise</div>
+    </div>
+
+    <div class="stat-grid reveal reveal-d3">
+      <div class="stat-card"><span class="stat-num" style="color:#cc2200">424</span><span class="stat-lbl">CO₂ ppm</span></div>
+      <div class="stat-card"><span class="stat-num" style="color:#cc2200">26%</span><span class="stat-lbl">Forest Cover</span></div>
+      <div class="stat-card"><span class="stat-num" style="color:#cc2200">+1.2°</span><span class="stat-lbl">Temp Change</span></div>
+    </div>
+
+    <p class="reveal reveal-d4" style="margin-top:1.5rem;font-size:1rem;color:#ff6633;animation:auraPulse 2s infinite">
+      The next chapter is not written yet ↓
+    </p>
+  </div>
+  <div class="s-hint">scroll →</div>
+</section>
+
+<!-- ══════════════════════════════════════
+     ERA 2100
+══════════════════════════════════════ -->
+<section class="era" id="era-2100" data-era-color="#7a0000" data-year="2100" data-temp="4.0" data-sound="storm">
+  <div class="era-bg-year">2100</div>
+  <div class="era-inner">
+    <div class="reveal reveal-d1">
+      <div class="earth-rig">
+        <div class="earth-aura" style="background:radial-gradient(circle,rgba(122,0,0,0.4) 0%,transparent 65%)"></div>
+        <div class="earth-core" style="filter:grayscale(0.5) sepia(0.5) drop-shadow(0 0 30px #aa0000)">🌍</div>
+        <div class="orbit orbit-1" style="border-color:rgba(200,0,0,0.25)"><div class="orbit-moon" style="background:#aa0000;box-shadow:0 0 18px #aa0000;width:16px;height:16px;top:-8px"></div></div>
+        <div class="orbit orbit-2" style="border-color:rgba(150,0,0,0.1)"></div>
+      </div>
+    </div>
+    <p class="era-tag reveal reveal-d1" style="color:#aa0000">Chapter 05 · 2100</p>
+    <h2 class="era-title reveal reveal-d2" style="color:#ff2200">💀 If We Do Nothing</h2>
+    <p class="era-desc reveal reveal-d2">700+ ppm CO₂. Temperatures up by 4°C. Mumbai, Miami, Shanghai — underwater. Billions face water scarcity. Mass extinction underway. Vast equatorial zones become permanently uninhabitable.</p>
+
+    <div class="sea-box reveal reveal-d3">
+      <div class="sea-fill" style="height:88%;background:linear-gradient(180deg,rgba(180,0,0,0.4),rgba(80,0,0,0.95))"></div>
+      <div class="sea-city-icon" style="bottom:86%;font-size:1.1rem">🏙️</div>
+      <div class="sea-tag">Sea Level Rise</div>
+    </div>
+
+    <div class="temp-track reveal reveal-d3"><div class="temp-fill" style="width:100%"></div></div>
+
+    <div class="stat-grid reveal reveal-d3">
+      <div class="stat-card"><span class="stat-num" style="color:#ff2200">700+</span><span class="stat-lbl">CO₂ ppm</span></div>
+      <div class="stat-card"><span class="stat-num" style="color:#ff2200">15%</span><span class="stat-lbl">Forest Cover</span></div>
+      <div class="stat-card"><span class="stat-num" style="color:#ff2200">+4.0°</span><span class="stat-lbl">Temp Change</span></div>
+    </div>
+
+    <p class="reveal reveal-d4" style="margin-top:1.5rem;font-size:1rem;color:#ff4400">
+      But YOU still have a choice ↓
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     ACTION
+══════════════════════════════════════ -->
+<section id="action">
+  <div class="earth-rig" style="width:120px;height:120px;margin-bottom:1.5rem">
+    <div class="earth-aura" style="background:radial-gradient(circle,rgba(0,232,122,0.2) 0%,transparent 65%)"></div>
+    <div class="earth-core" style="font-size:4.5rem;filter:drop-shadow(0 0 20px #00e87a)">🌱</div>
+  </div>
+  <h2 class="reveal">What Can YOU Do?</h2>
+  <p class="sub2 reveal reveal-d1">Tap each action to commit. Every one matters.</p>
+
+  <ul class="act-list reveal reveal-d2">
+    <li class="act-item" onclick="toggleAct(this)">
+      <div class="act-chk">✓</div>
+      <div><div class="act-txt">🚲 Cycle or walk instead of driving once a week</div><div class="act-co2">Saves ~2.4 kg CO₂ per trip</div></div>
+    </li>
+    <li class="act-item" onclick="toggleAct(this)">
+      <div class="act-chk">✓</div>
+      <div><div class="act-txt">🥗 Eat plant-based meals 3 days a week</div><div class="act-co2">Reduces food emissions by up to 50%</div></div>
+    </li>
+    <li class="act-item" onclick="toggleAct(this)">
+      <div class="act-chk">✓</div>
+      <div><div class="act-txt">💡 Switch to LED bulbs at home</div><div class="act-co2">Saves 40 kg CO₂ per bulb per year</div></div>
+    </li>
+    <li class="act-item" onclick="toggleAct(this)">
+      <div class="act-chk">✓</div>
+      <div><div class="act-txt">🛍️ Carry a reusable bag — refuse single-use plastic</div><div class="act-co2">Each bag saves 5 kg of plastic/year</div></div>
+    </li>
+    <li class="act-item" onclick="toggleAct(this)">
+      <div class="act-chk">✓</div>
+      <div><div class="act-txt">🌳 Plant or fund one tree this month</div><div class="act-co2">1 tree absorbs 25 kg CO₂/year</div></div>
+    </li>
+    <li class="act-item" onclick="toggleAct(this)">
+      <div class="act-chk">✓</div>
+      <div><div class="act-txt">📱 Share this page with 3 people today</div><div class="act-co2">Awareness multiplies impact exponentially</div></div>
+    </li>
+  </ul>
+
+  <div id="score">0 / 6 actions committed</div>
+  <button class="share-btn" onclick="doShare()">Share This Weboreel 🌍</button>
+  <p style="margin-top:3rem;opacity:0.2;font-size:0.65rem;max-width:460px;line-height:1.6">
+    Data: NASA GISS, NOAA, IPCC AR6 2023, Global Forest Watch, WMO
+  </p>
+</section>
+
+<style>
+@keyframes dangerShake {
+  0%,100%{ transform:translateY(var(--fy,0)) rotate(0deg); }
+  20%    { transform:translateY(var(--fy,0)) rotate(-3deg); }
+  40%    { transform:translateY(var(--fy,0)) rotate(3deg); }
+  60%    { transform:translateY(var(--fy,0)) rotate(-2deg); }
+  80%    { transform:translateY(var(--fy,0)) rotate(2deg); }
+}
+</style>
+
+<script>
+/* ════════════════════════
+   CURSOR
+════════════════════════ */
+const cur = document.getElementById('cursor');
+const ring = document.getElementById('cursor-ring');
+document.addEventListener('mousemove', e => {
+  cur.style.left  = e.clientX + 'px';
+  cur.style.top   = e.clientY + 'px';
+  ring.style.left = e.clientX + 'px';
+  ring.style.top  = e.clientY + 'px';
+});
+document.querySelectorAll('a,button,.act-item,.stat-card').forEach(el => {
+  el.addEventListener('mouseenter', () => { ring.style.width='56px'; ring.style.height='56px'; });
+  el.addEventListener('mouseleave', () => { ring.style.width='36px'; ring.style.height='36px'; });
+});
+
+/* ════════════════════════
+   STAR CANVAS
+════════════════════════ */
+const bgC  = document.getElementById('bg-canvas');
+const bgCtx= bgC.getContext('2d');
+let stars  = [];
+
+function resizeBg(){
+  bgC.width  = window.innerWidth;
+  bgC.height = window.innerHeight;
+}
+resizeBg();
+window.addEventListener('resize', resizeBg);
+
+for(let i=0;i<200;i++){
+  stars.push({
+    x:Math.random()*window.innerWidth,
+    y:Math.random()*window.innerHeight,
+    r:Math.random()*1.5+0.3,
+    a:Math.random(),
+    da:(Math.random()*0.004+0.001)*(Math.random()<0.5?1:-1)
+  });
+}
+
+// meteors
+let meteors=[];
+function spawnMeteor(){
+  meteors.push({ x:Math.random()*window.innerWidth, y:-20, vx:1.5+Math.random()*2, vy:3+Math.random()*2, life:1 });
+  setTimeout(spawnMeteor, 2000+Math.random()*4000);
+}
+spawnMeteor();
+
+function drawBg(){
+  bgCtx.clearRect(0,0,bgC.width,bgC.height);
+  stars.forEach(s=>{
+    s.a+=s.da;
+    if(s.a>1||s.a<0.05) s.da*=-1;
+    bgCtx.beginPath();
+    bgCtx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    bgCtx.fillStyle=`rgba(255,255,255,${s.a})`;
+    bgCtx.fill();
+  });
+  meteors.forEach((m,i)=>{
+    m.x+=m.vx; m.y+=m.vy; m.life-=0.008;
+    if(m.life<=0||m.y>window.innerHeight){ meteors.splice(i,1); return; }
+    const g=bgCtx.createLinearGradient(m.x,m.y,m.x-m.vx*15,m.y-m.vy*15);
+    g.addColorStop(0,`rgba(255,255,255,${m.life})`);
+    g.addColorStop(1,'rgba(255,255,255,0)');
+    bgCtx.beginPath();
+    bgCtx.strokeStyle=g;
+    bgCtx.lineWidth=1.5;
+    bgCtx.moveTo(m.x,m.y);
+    bgCtx.lineTo(m.x-m.vx*15,m.y-m.vy*15);
+    bgCtx.stroke();
+  });
+  requestAnimationFrame(drawBg);
+}
+drawBg();
+
+/* ════════════════════════
+   PARTICLE CANVAS
+════════════════════════ */
+const pC  = document.getElementById('particle-canvas');
+const pCtx= pC.getContext('2d');
+let pts   = [];
+
+function resizeP(){ pC.width=window.innerWidth; pC.height=window.innerHeight; }
+resizeP(); window.addEventListener('resize',resizeP);
+
+for(let i=0;i<70;i++){
+  pts.push({
+    x:Math.random()*1920, y:Math.random()*1080,
+    vx:(Math.random()-.5)*.25, vy:(Math.random()-.5)*.25,
+    r:Math.random()*1.2+.4, a:Math.random()*.3
+  });
+}
+function drawP(){
+  pCtx.clearRect(0,0,pC.width,pC.height);
+  pts.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy;
+    if(p.x<0)p.x=pC.width; if(p.x>pC.width)p.x=0;
+    if(p.y<0)p.y=pC.height; if(p.y>pC.height)p.y=0;
+    pCtx.beginPath();
+    pCtx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    pCtx.fillStyle=`rgba(255,255,255,${p.a})`;
+    pCtx.fill();
+  });
+  requestAnimationFrame(drawP);
+}
+drawP();
+
+/* ════════════════════════
+   TREES
+════════════════════════ */
+function mkTrees(id,count,col){
+  const el=document.getElementById(id); if(!el)return;
+  el.innerHTML='';
+  for(let i=0;i<44;i++){
+    const t=document.createElement('div');
+    t.className='tree-bar';
+    const alive=i<count;
+    t.style.height = alive?(22+Math.random()*48)+'px':'3px';
+    t.style.background = alive?col:'#222';
+    t.style.opacity = alive?'1':'0.15';
+    t.style.animationDelay=(Math.random()*3)+'s';
+    el.appendChild(t);
+  }
+}
+mkTrees('f1900',40,'#2d8a27');
+mkTrees('f1950',28,'#6a8a20');
+mkTrees('f2000',16,'#8a5010');
+
+/* FIRES */
+const fDiv=document.getElementById('fires');
+if(fDiv){
+  for(let i=0;i<22;i++){
+    const f=document.createElement('span');
+    f.className='fire-ico';
+    f.textContent=i<14?'🔥':'🌲';
+    f.style.animationDelay=(Math.random()*.4)+'s';
+    fDiv.appendChild(f);
+  }
+}
+
+/* ════════════════════════
+   ERA DATA
+════════════════════════ */
+const ERAS=[
+  {id:'hero',    color:'#4a9e3f', year:1900, temp:0.0},
+  {id:'era-1900',color:'#4a9e3f', year:1900, temp:0.0},
+  {id:'era-1950',color:'#c8952a', year:1950, temp:0.3},
+  {id:'era-2000',color:'#d4541a', year:2000, temp:0.8},
+  {id:'era-2024',color:'#cc2200', year:2024, temp:1.2},
+  {id:'era-2100',color:'#7a0000', year:2100, temp:4.0},
+  {id:'action',  color:'#00e87a', year:2024, temp:1.2},
+];
+
+function lerp(a,b,t){return a+(b-a)*t;}
+
+/* ════════════════════════
+   SCROLL ENGINE
+════════════════════════ */
+const pb      = document.getElementById('progress-bar');
+const hudY    = document.getElementById('hud-year');
+const hudT    = document.getElementById('hud-temp-val');
+const tlDots  = document.querySelectorAll('.tl-dot');
+const tlLines = document.querySelectorAll('.tl-line');
+
+let currentSound = 'forest';
+
+function setEraColor(color){
+  document.documentElement.style.setProperty('--era-color', color);
+  document.querySelectorAll('.stat-num').forEach(el=>{
+    if(!el.style.color || el.style.color==='')
+      el.style.color=color;
+  });
+  document.querySelectorAll('.orbit-moon').forEach(el=>{
+    if(!el.style.background) el.style.background=color;
+  });
+}
+
+window.addEventListener('scroll', ()=>{
+  const st  = window.scrollY;
+  const dh  = document.documentElement.scrollHeight - window.innerHeight;
+  const prog= st/dh;
+  pb.style.width=(prog*100)+'%';
+
+  // Find active era
+  let activeIdx=0;
+  ERAS.forEach((e,i)=>{
+    const el=document.getElementById(e.id);
+    if(!el)return;
+    if(st >= el.offsetTop - window.innerHeight*0.45) activeIdx=i;
+  });
+
+  // Interpolate between eras
+  const prev=ERAS[Math.max(0,activeIdx-1)];
+  const curr=ERAS[activeIdx];
+  const next=ERAS[Math.min(ERAS.length-1,activeIdx+1)];
+
+  const elCurr=document.getElementById(curr.id);
+  const elNext=document.getElementById(next.id);
+  let t=0;
+  if(elCurr && elNext && curr.id!==next.id){
+    const span=elNext.offsetTop - elCurr.offsetTop;
+    t=Math.min(1,Math.max(0,(st-elCurr.offsetTop)/span));
+  }
+
+  const year = Math.round(lerp(curr.year, next.year, t));
+  const temp = lerp(curr.temp, next.temp, t);
+
+  hudY.textContent = year;
+  hudT.textContent = '+'+temp.toFixed(1)+'°C';
+
+  // Color transition
+  const col = activeIdx < ERAS.length-1
+    ? lerpColor(curr.color, next.color, t)
+    : curr.color;
+
+  pb.style.background   = col;
+  pb.style.boxShadow    = `0 0 12px ${col}`;
+  hudY.style.color      = col;
+  hudY.style.textShadow = `0 0 40px ${col}`;
+  hudT.style.color      = col;
+
+  // Timeline dots
+  tlDots.forEach((dot,i)=>{
+    dot.classList.toggle('active', i===activeIdx);
+  });
+  tlLines.forEach((line,i)=>{
+    line.classList.toggle('lit', i<activeIdx);
+  });
+
+  // Sound trigger
+  if(curr.id !== currentSound){
+    currentSound = curr.id;
+    if(soundOn) switchSound(curr.id);
+  }
+});
+
+function lerpColor(a,b,t){
+  const ah=a.replace('#',''), bh=b.replace('#','');
+  const ar=parseInt(ah.slice(0,2),16), ag=parseInt(ah.slice(2,4),16), ab_=parseInt(ah.slice(4,6),16);
+  const br=parseInt(bh.slice(0,2),16), bg=parseInt(bh.slice(2,4),16), bb=parseInt(bh.slice(4,6),16);
+  const r=Math.round(lerp(ar,br,t)), g=Math.round(lerp(ag,bg,t)), b2=Math.round(lerp(ab_,bb,t));
+  return `rgb(${r},${g},${b2})`;
+}
+
+/* ════════════════════════
+   SCROLL NAV
+════════════════════════ */
+window.scrollTo = function(id){
+  const el=document.getElementById(id);
+  if(el) el.scrollIntoView({behavior:'smooth'});
+};
+
+/* ════════════════════════
+   INTERSECTION REVEALS
+════════════════════════ */
+const revObs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('in'); });
+},{threshold:0.12});
+document.querySelectorAll('.reveal').forEach(el=>revObs.observe(el));
+
+/* ════════════════════════
+   WEB AUDIO AMBIENT SOUNDS
+════════════════════════ */
+let audioCtx=null, soundOn=false;
+let masterGain=null, currentNodes=[];
+
+function initAudio(){
+  if(audioCtx) return;
+  audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  masterGain=audioCtx.createGain();
+  masterGain.gain.setValueAtTime(0.18,audioCtx.currentTime);
+  masterGain.connect(audioCtx.destination);
+}
+
+function stopAllNodes(){
+  currentNodes.forEach(n=>{ try{ n.stop(); }catch(e){} });
+  currentNodes=[];
+}
+
+function makeOsc(freq,type,gainVal,detune=0){
+  const osc=audioCtx.createOscillator();
+  const g  =audioCtx.createGain();
+  osc.type=type;
+  osc.frequency.value=freq;
+  osc.detune.value=detune;
+  g.gain.value=gainVal;
+  osc.connect(g); g.connect(masterGain);
+  osc.start();
+  currentNodes.push(osc);
+  return {osc,g};
+}
+
+function makeBrownNoise(gainVal){
+  const bufSize=2*audioCtx.sampleRate;
+  const buf=audioCtx.createBuffer(1,bufSize,audioCtx.sampleRate);
+  const data=buf.getChannelData(0);
+  let last=0;
+  for(let i=0;i<bufSize;i++){
+    const white=(Math.random()*2-1);
+    data[i]=last=(last+0.02*white)/1.02;
+  }
+  const src=audioCtx.createBufferSource();
+  src.buffer=buf; src.loop=true;
+  const g=audioCtx.createGain(); g.gain.value=gainVal;
+  const filt=audioCtx.createBiquadFilter();
+  filt.type='lowpass'; filt.frequency.value=400;
+  src.connect(filt); filt.connect(g); g.connect(masterGain);
+  src.start();
+  currentNodes.push(src);
+  return {src,g};
+}
+
+function makePinkNoise(gainVal){
+  const bufSize=audioCtx.sampleRate;
+  const buf=audioCtx.createBuffer(1,bufSize,audioCtx.sampleRate);
+  const data=buf.getChannelData(0);
+  let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+  for(let i=0;i<bufSize;i++){
+    const w=Math.random()*2-1;
+    b0=0.99886*b0+w*0.0555179; b1=0.99332*b1+w*0.0750759;
+    b2=0.96900*b2+w*0.1538520; b3=0.86650*b3+w*0.3104856;
+    b4=0.55000*b4+w*0.5329522; b5=-0.7616*b5-w*0.0168980;
+    data[i]=(b0+b1+b2+b3+b4+b5+b6+w*0.5362)*0.11;
+    b6=w*0.115926;
+  }
+  const src=audioCtx.createBufferSource();
+  src.buffer=buf; src.loop=true;
+  const g=audioCtx.createGain(); g.gain.value=gainVal;
+  src.connect(g); g.connect(masterGain);
+  src.start();
+  currentNodes.push(src);
+  return {src,g};
+}
+
+function playForestSound(){
+  // Gentle birds + wind
+  makePinkNoise(0.06);
+  // Bird chirps
+  [440,550,660,880].forEach((f,i)=>{
+    const osc=audioCtx.createOscillator();
+    const g=audioCtx.createGain();
+    osc.type='sine'; osc.frequency.value=f;
+    g.gain.value=0;
+    osc.connect(g); g.connect(masterGain); osc.start();
+    currentNodes.push(osc);
+    function chirp(){
+      if(!soundOn) return;
+      g.gain.setValueAtTime(0,audioCtx.currentTime);
+      g.gain.linearRampToValueAtTime(0.04,audioCtx.currentTime+0.05);
+      g.gain.linearRampToValueAtTime(0,audioCtx.currentTime+0.3);
+      setTimeout(chirp, 1200+Math.random()*2400+i*600);
+    }
+    setTimeout(chirp, i*400);
+  });
+}
+
+function playFactorySound(){
+  // Low industrial hum + rumble
+  makeBrownNoise(0.12);
+  makeOsc(60,'sawtooth',0.04);
+  makeOsc(120,'square',0.02,5);
+  // Rhythmic pulse
+  const puls=audioCtx.createOscillator();
+  const pg=audioCtx.createGain(); pg.gain.value=0;
+  puls.type='square'; puls.frequency.value=2;
+  puls.connect(pg); pg.connect(masterGain); puls.start();
+  currentNodes.push(puls);
+  function beat(){
+    if(!soundOn)return;
+    pg.gain.setValueAtTime(0.03,audioCtx.currentTime);
+    pg.gain.linearRampToValueAtTime(0,audioCtx.currentTime+0.2);
+    setTimeout(beat,800+Math.random()*200);
+  }
+  beat();
+}
+
+function playWindSound(){
+  // Rising wind
+  const bufSize=2*audioCtx.sampleRate;
+  const buf=audioCtx.createBuffer(1,bufSize,audioCtx.sampleRate);
+  const data=buf.getChannelData(0);
+  let v=0;
+  for(let i=0;i<bufSize;i++){
+    v+=((Math.random()*2-1)-v)*0.002;
+    data[i]=v;
+  }
+  const src=audioCtx.createBufferSource();
+  src.buffer=buf; src.loop=true;
+  const g=audioCtx.createGain(); g.gain.value=0.2;
+  const filt=audioCtx.createBiquadFilter();
+  filt.type='bandpass'; filt.frequency.value=800; filt.Q.value=0.5;
+  src.connect(filt); filt.connect(g); g.connect(masterGain);
+  src.start(); currentNodes.push(src);
+  // High whine
+  makeOsc(1200,'sine',0.012,10);
+}
+
+function playFireSound(){
+  // Crackling fire — high freq noise bursts + deep crackle
+  makePinkNoise(0.15);
+  makeBrownNoise(0.08);
+  // Crackle
+  function crackle(){
+    if(!soundOn)return;
+    const freq=2000+Math.random()*4000;
+    const osc=audioCtx.createOscillator();
+    const g=audioCtx.createGain();
+    osc.type='sawtooth'; osc.frequency.value=freq;
+    g.gain.value=0;
+    osc.connect(g); g.connect(masterGain); osc.start();
+    g.gain.setValueAtTime(0.05,audioCtx.currentTime);
+    g.gain.linearRampToValueAtTime(0,audioCtx.currentTime+0.05);
+    try{ osc.stop(audioCtx.currentTime+0.06); }catch(e){}
+    setTimeout(crackle,50+Math.random()*150);
+  }
+  crackle();
+}
+
+function playStormSound(){
+  // Deep thunder rumble + howling wind
+  makeBrownNoise(0.25);
+  makePinkNoise(0.1);
+  makeOsc(40,'sine',0.06);
+  makeOsc(80,'sine',0.03,7);
+  // Thunder pulse
+  function thunder(){
+    if(!soundOn)return;
+    const g=audioCtx.createGain();
+    const osc=audioCtx.createOscillator();
+    osc.type='sawtooth'; osc.frequency.value=30+Math.random()*20;
+    g.gain.value=0;
+    osc.connect(g); g.connect(masterGain); osc.start();
+    g.gain.linearRampToValueAtTime(0.18,audioCtx.currentTime+0.1);
+    g.gain.linearRampToValueAtTime(0,audioCtx.currentTime+1.5);
+    try{ osc.stop(audioCtx.currentTime+2); }catch(e){}
+    setTimeout(thunder,3000+Math.random()*5000);
+  }
+  setTimeout(thunder,1000);
+}
+
+function playActionSound(){
+  // Hopeful gentle tones
+  makePinkNoise(0.03);
+  [261.63,329.63,392,523.25].forEach((f,i)=>{
+    const osc=audioCtx.createOscillator();
+    const g=audioCtx.createGain();
+    osc.type='sine'; osc.frequency.value=f;
+    g.gain.value=0;
+    osc.connect(g); g.connect(masterGain); osc.start();
+    currentNodes.push(osc);
+    function pulse(){
+      if(!soundOn)return;
+      g.gain.setValueAtTime(0,audioCtx.currentTime);
+      g.gain.linearRampToValueAtTime(0.03,audioCtx.currentTime+0.4);
+      g.gain.linearRampToValueAtTime(0,audioCtx.currentTime+1.2);
+      setTimeout(pulse,2000+i*500+Math.random()*1000);
+    }
+    setTimeout(pulse,i*300);
+  });
+}
+
+const soundMap={
+  'hero':    playForestSound,
+  'era-1900':playForestSound,
+  'era-1950':playFactorySound,
+  'era-2000':playWindSound,
+  'era-2024':playFireSound,
+  'era-2100':playStormSound,
+  'action':  playActionSound,
+};
+
+function switchSound(eraId){
+  stopAllNodes();
+  const fn=soundMap[eraId]||playForestSound;
+  fn();
+}
+
+window.toggleSound=function(){
+  initAudio();
+  soundOn=!soundOn;
+  const btn=document.getElementById('sound-btn');
+  const viz=document.getElementById('viz');
+  if(soundOn){
+    if(audioCtx.state==='suspended') audioCtx.resume();
+    switchSound(currentSound);
+    btn.textContent='🔊';
+    viz.classList.add('active');
+    masterGain.gain.setTargetAtTime(0.18,audioCtx.currentTime,0.3);
+  } else {
+    stopAllNodes();
+    btn.textContent='🔇';
+    viz.classList.remove('active');
+  }
+};
+
+/* ════════════════════════
+   CHECKLIST
+════════════════════════ */
+window.toggleAct=function(el){
+  el.classList.toggle('done');
+  const c=document.querySelectorAll('.act-item.done').length;
+  document.getElementById('score').textContent=`${c} / 6 actions committed`;
+};
+
+/* ════════════════════════
+   SHARE
+════════════════════════ */
+window.doShare=function(){
+  if(navigator.share){
+    navigator.share({title:"Earth's Last Century",text:"This climate timeline blew my mind 🌍",url:window.location.href});
+  } else {
+    navigator.clipboard.writeText(window.location.href);
+    alert('Link copied! Share it 🌱');
+  }
+};
+</script>
+</body>
+</html>
